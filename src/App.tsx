@@ -67,38 +67,6 @@ function App() {
 
     var solv = false;
 
-    // Build a cube state from current gridPositions for solving
-    const buildCubeState = () => {
-        // Initialize a 3D cube array with face colors
-        const state: any = [];
-
-        for (let x = 0; x < 3; x++) {
-            state[x] = [];
-            for (let y = 0; y < 3; y++) {
-                state[x][y] = [];
-                for (let z = 0; z < 3; z++) {
-                    // Initialize face stickers (null if not present)
-                    state[x][y][z] = {
-                        U: null, D: null, L: null, R: null, F: null, B: null
-                    };
-                }
-            }
-        }
-        allCubesRef.current.forEach(cube => {
-            const gp = cube.userData.gridPosition as { x: number; y: number; z: number };
-            const faceColors = cube.userData.faceColors as { [key: string]: string };
-
-            // Assign visible faces based on current gridPosition and current face colors
-            if (gp.x === 2 && faceColors.R) state[gp.x][gp.y][gp.z].R = faceColors.R;
-            if (gp.x === 0 && faceColors.L) state[gp.x][gp.y][gp.z].L = faceColors.L;
-            if (gp.y === 2 && faceColors.U) state[gp.x][gp.y][gp.z].U = faceColors.U;
-            if (gp.y === 0 && faceColors.D) state[gp.x][gp.y][gp.z].D = faceColors.D;
-            if (gp.z === 2 && faceColors.F) state[gp.x][gp.y][gp.z].F = faceColors.F;
-            if (gp.z === 0 && faceColors.B) state[gp.x][gp.y][gp.z].B = faceColors.B;
-        });
-        return state;
-    };
-
     /**
      * Functions for converting cube move notation to grid layout rotations - and other way
      */
@@ -131,8 +99,6 @@ function App() {
     const reverseMap: { [key: string]: string } = {};
 
     for (const [notation, moves] of Object.entries(moveMap)) {
-        // Every move in the list should map back to this notation
-        // (R2 has two identical moves, both map to "R2")
         for (const move of moves) {
             const key = `${move.axis}:${move.index}:${move.direction}:${moves.length}`;
             reverseMap[key] = notation;
@@ -154,13 +120,8 @@ function App() {
 
         const cube = new Cube();
         moveQueue.forEach(move => {
-            //parsedMoves.push(moveToNotation(move));
-            console.log(moveToNotation([move]));
             cube.move(moveToNotation([move]));
         });
-
-        console.log(cube.isSolved())
-        //console.log(cube.toJSON())
 
         Cube.initSolver();
 
@@ -178,7 +139,6 @@ function App() {
 
     }
     const solveByInverseMoves = () => {
-        // Use CubeService solver to find solution
         if (!cubeRef.current || dragRef.current.isMoving) return;
         // Run the greedy solver
         console.log('Solving cube...');
@@ -210,12 +170,6 @@ function App() {
         rand = true;
         moveByQueue();
 
-        /*const moves = solutionService.scramble(1);
-        console.log(moves);
-        const parsedMoves = moves.flatMap(m => parseMoveNotation(m));
-        console.log(parsedMoves);
-        randomizeMoveQueue.push(...parsedMoves);*/
-
     }
 
     const moveByQueue = () => {
@@ -226,25 +180,22 @@ function App() {
             rand = false;
             return;
         }
-        // Get next move from appropriate queue
         if (rand) {
             const move = randomizeMoveQueue.pop()!;
             moveQueue.push({ axis: move.axis, index: move.index, direction: move.direction });
             performRotation(move.axis, move.index, move.direction);
         } else {
             const move = moveQueue.pop()!;
-            // For solving, replay moves in reverse
             const moveDir = move.direction;
             performRotation(move.axis, move.index, moveDir);
         }
     };
 
     const getClickedFace = (intersection: THREE.Intersection, clickedCube: THREE.Mesh) => {
-        // intersection.point is in world space; convert to cubeGroup local space
+    
         const worldPoint = intersection.point.clone();
-        const localPoint = group.worldToLocal(worldPoint.clone()); // into cubeGroup coordinates
+        const localPoint = group.worldToLocal(worldPoint.clone());
 
-        // But we want relative to the clicked cubie's center in cubeGroup coords
         const cubieWorldPos = clickedCube.getWorldPosition(new THREE.Vector3());
         const cubieLocalPos = group.worldToLocal(cubieWorldPos.clone());
         const relative = new THREE.Vector3().subVectors(localPoint, cubieLocalPos);
@@ -280,8 +231,9 @@ function App() {
             console.log(clickedCube.userData.gridPosition);
             dragRef.current.clickFace = getClickedFace(hit, clickedCube);
             dragRef.current.clickWorldPoint.copy(hit.point);
-            dragRef.current.clickDistance = hit.distance; // distance along camera ray
+            dragRef.current.clickDistance = hit.distance;
         } else {
+            // Rotation
             dragRef.current.dragMode = 'full';
             dragRef.current.clickedCube = null;
             dragRef.current.clickFace = null;
@@ -295,24 +247,19 @@ function App() {
         const deltaY = e.clientY - dragRef.current.dragEndPosition.y;
 
         if (dragRef.current.dragMode === 'full' && cameraRef.current) {
-            // Orbit camera around the cube following cube's axes
             const camera = cameraRef.current;
             const cubeCenter = new THREE.Vector3(0, 0, 0);
 
-            // Get current camera position relative to cube center
             const offset = camera.position.clone().sub(cubeCenter);
 
-            // Horizontal drag: rotate around cube's Y axis
             const yAxis = new THREE.Vector3(0, 1, 0);
             const qY = new THREE.Quaternion().setFromAxisAngle(yAxis, deltaX * -0.005);
             offset.applyQuaternion(qY);
 
-            // Vertical drag: rotate around cube's X axis (but only if not pointing straight up/down)
             const xAxis = new THREE.Vector3(1, 0, 0);
             const qX = new THREE.Quaternion().setFromAxisAngle(xAxis, deltaY * -0.005);
             offset.applyQuaternion(qX);
 
-            // Apply new position
             camera.position.copy(cubeCenter.clone().add(offset));
             camera.lookAt(cubeCenter);
         }
@@ -337,24 +284,20 @@ function App() {
             const dy = end.y - start.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // compute world point for end mouse at the same distance as start click
             const rect = rendererRef.current.domElement.getBoundingClientRect();
             const ndcEnd = new THREE.Vector2(
                 ((end.x - rect.left) / rect.width) * 2 - 1,
                 -((end.y - rect.top) / rect.height) * 2 + 1
             );
 
-            // get a world point along new ray at the same distance from camera as original click
             raycasterRef.current.setFromCamera(ndcEnd, cameraRef.current);
             const endWorld = raycasterRef.current.ray.origin.clone().add(raycasterRef.current.ray.direction.clone().multiplyScalar(dragRef.current.clickDistance));
 
-            // convert both points into cubeGroup-local space and compute local drag
             const cubeGroup = cubeRef.current as THREE.Group;
             const startLocal = cubeGroup.worldToLocal(dragRef.current.clickWorldPoint.clone());
             const endLocal = cubeGroup.worldToLocal(endWorld.clone());
             const localDrag = new THREE.Vector3().subVectors(endLocal, startLocal);
 
-            // zero out the face axis (we don't want to consider drag towards/away from face)
             const face = dragRef.current.clickFace as 'x' | 'y' | 'z';
             (localDrag as any)[face] = 0;
             let dir = 0;
@@ -402,11 +345,9 @@ function App() {
 
         dragRef.current.isMoving = true;
 
-        // Handle double moves by calling twice with direction 1 or -1
         if (Math.abs(direction) === 2) {
             const singleDirection = Math.sign(direction);
             performRotation(axis, clickedIndex, singleDirection);
-            // The chainedMove mechanism will handle subsequent rotations via callback
             return;
         }
 
@@ -414,7 +355,6 @@ function App() {
 
         const mainGroup = cubeRef.current;
 
-        // pick cubies matching logical gridPosition
         const active: THREE.Mesh[] = [];
         allCubesRef.current.forEach(c => {
             const gp = c.userData.gridPosition as { x: number; y: number; z: number };
@@ -426,113 +366,59 @@ function App() {
             return;
         }
 
-        // position pivot at the slice plane center in cubeGroup-local coordinates
         const pivot = pivotRef.current;
-        //pivot.position.set(0, 0, 0);
         pivot.rotation.set(0, 0, 0);
         pivot.updateMatrixWorld(true);
 
-        // attach active cubies to pivot (pivot already child of cubeGroup so attaches preserve local coords)
         active.forEach(c => pivot.attach(c));
-        // animate rotation in pivot (pivot local axes follow cube orientation)
         const axisVec = axis === 'x' ? new THREE.Vector3(1, 0, 0) : axis === 'y' ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
         const target = Math.PI / 2 * direction;
         let accumulated = 0;
-        const speed = 0.15; // radians per frame (coarse)
+        const speed = 0.15;
         const updateGridPositions = () => {
             active.forEach(c => {
                 const gp = c.userData.gridPosition as any;
-                const faceColors = c.userData.faceColors as any;
                 let nx = gp.x, ny = gp.y, nz = gp.z;
-                //console.log('oldFaceColors', faceColors);
-                // Rotate face colors along with gridPosition
-                let newFaceColors = { ...faceColors };
 
                 if (axis === 'x') {
                     const oldY = ny;
                     if (direction > 0) {
                         ny = 2 - nz;
                         nz = oldY;
-                        // Rotate face colors: F->U->B->D->F
-                        const tempB = faceColors.B;
-                        newFaceColors.F = faceColors.U;
-                        newFaceColors.D = faceColors.F;
-                        newFaceColors.B = faceColors.D;
-                        newFaceColors.U = tempB;
                     } else {
                         ny = nz;
                         nz = 2 - oldY;
-                        // Reverse rotation
-
-                        const tempB = faceColors.B;
-                        newFaceColors.F = faceColors.D;
-                        newFaceColors.U = faceColors.F;
-                        newFaceColors.B = faceColors.U;
-                        newFaceColors.D = tempB;
                     }
                 } else if (axis === 'y') {
                     const oldX = nx;
                     if (direction > 0) {
                         nx = nz;
                         nz = 2 - oldX;
-
-                        const tempL = faceColors.L;
-                        newFaceColors.R = faceColors.F;
-                        newFaceColors.B = faceColors.R;
-                        newFaceColors.L = faceColors.B;
-                        //console.log(tempL)
-                        newFaceColors.F = tempL;
                     } else {
                         nx = 2 - nz;
                         nz = oldX;
-                        // Reverse rotation
-                        const tempL = faceColors.L;
-                        newFaceColors.L = faceColors.F;
-                        newFaceColors.F = faceColors.R;
-                        newFaceColors.R = faceColors.B;
-                        newFaceColors.B = tempL;
                     }
                 } else if (axis === 'z') {
                     const oldX = nx;
                     if (direction > 0) {
                         nx = 2 - ny;
                         ny = oldX;
-                        // Rotate face colors: U->L->D->R->U
-                        const tempU = newFaceColors.U;
-                        newFaceColors.U = newFaceColors.R;
-                        newFaceColors.R = newFaceColors.D;
-                        newFaceColors.D = newFaceColors.L;
-                        newFaceColors.L = tempU;
                     } else {
                         nx = ny;
                         ny = 2 - oldX;
-                        // Reverse rotation
-                        const tempU = newFaceColors.U;
-                        newFaceColors.U = newFaceColors.L;
-                        newFaceColors.L = newFaceColors.D;
-                        newFaceColors.D = newFaceColors.R;
-                        newFaceColors.R = tempU;
                     }
                 }
                 c.userData.gridPosition = { x: nx, y: ny, z: nz };
-                //console.log("newFaceColors", newFaceColors);
-                c.userData.faceColors = newFaceColors;
             });
         }
 
         const step = () => {
             const remaining = Math.abs(target) - Math.abs(accumulated);
             if (remaining <= 0.0001) {
-                // finish
-                // snap exact
-                // set pivot rotation around axis to target
-                // we will rotate residual to match exactly
                 const toRotate = target - accumulated;
-                if (Math.abs(toRotate) > 0.0001) pivot.rotateOnAxis(axisVec, toRotate);
+                if (Math.abs(toRotate) > 0.0001) pivot.rotateOnAxis(axisVec, toRotate); // Snap to target
 
-                // update logical grid positions
                 updateGridPositions();
-                // detach back to main group
                 active.forEach(c => mainGroup!.attach(c));
                 dragRef.current.isMoving = false;
                 console.log('Rotation complete');
@@ -554,7 +440,6 @@ function App() {
     useEffect(() => {
         if (!containerRef.current) return;
 
-        // Check if canvas already exists to prevent duplicates
         if (containerRef.current.children.length > 0) {
             return;
         }
@@ -577,8 +462,7 @@ function App() {
         containerRef.current.appendChild(renderer.domElement);
         rendererRef.current = renderer;
 
-        // Create 3x3x3 Rubik's cube
-
+        // Cube
         scene.add(group);
         cubeRef.current = group;
         pivotRef.current.name = 'pivot';
@@ -609,21 +493,6 @@ function App() {
 
                     cube.position.set(posX, posY, posZ);
                     cube.userData.gridPosition = { x, y, z };
-
-                    // Store face colors by face direction (these rotate with the cube)
-                    let faceColors: { [key: string]: string } = {};
-                    const colorKeys = ['O', 'R', 'W', 'Y', 'B', 'G'];
-                    // Index mapping (matches Three.js BoxGeometry material order):
-                    // 0=Right/R, 1=Left/L, 2=Top/U, 3=Bottom/D, 4=Front/F, 5=Back/B
-
-                    if (x === 2) faceColors.R = colorKeys[0]; // Right = Orange
-                    if (x === 0) faceColors.L = colorKeys[1]; // Left = Red
-                    if (y === 2) faceColors.U = colorKeys[2]; // Up = White
-                    if (y === 0) faceColors.D = colorKeys[3]; // Down = Yellow
-                    if (z === 2) faceColors.F = colorKeys[4]; // Front = Blue
-                    if (z === 0) faceColors.B = colorKeys[5]; // Back = Green
-
-                    cube.userData.faceColors = faceColors;
 
                     const edges = new THREE.EdgesGeometry(cubeGeometry);
                     const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
