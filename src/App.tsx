@@ -38,6 +38,10 @@ function App() {
         0x00ff00, // green  - index 5 (Back/-Z)
     ];
 
+    const logicalCube = new Cube();
+
+    const gray = 0x808080;
+
     var chainedMove = false;
 
     var moveQueue: { axis: 'x' | 'y' | 'z'; index: number; direction: number }[] = [];
@@ -71,29 +75,29 @@ function App() {
      * Functions for converting cube move notation to grid layout rotations - and other way
      */
     const moveMap: { [key: string]: { axis: 'x' | 'y' | 'z'; index: number; direction: number }[] } = {
-        'R': [{ axis: 'x', index: 2, direction: 1 }],
-        "R'": [{ axis: 'x', index: 2, direction: -1 }],
-        'R2': [{ axis: 'x', index: 2, direction: 1 }, { axis: 'x', index: 2, direction: 1 }],
+        'B': [{ axis: 'x', index: 2, direction: -1 }],
+        "B'": [{ axis: 'x', index: 2, direction: 1 }],
+        'B2': [{ axis: 'x', index: 2, direction: -1 }, { axis: 'x', index: 2, direction: -1 }],
 
-        'L': [{ axis: 'x', index: 0, direction: -1 }],
-        "L'": [{ axis: 'x', index: 0, direction: 1 }],
-        'L2': [{ axis: 'x', index: 0, direction: -1 }, { axis: 'x', index: 0, direction: -1 }],
+        'F': [{ axis: 'x', index: 0, direction: 1 }],
+        "F'": [{ axis: 'x', index: 0, direction: -1 }],
+        'F2': [{ axis: 'x', index: 0, direction: 1 }, { axis: 'x', index: 0, direction: 1 }],
 
-        'U': [{ axis: 'y', index: 2, direction: 1 }],
-        "U'": [{ axis: 'y', index: 2, direction: -1 }],
-        'U2': [{ axis: 'y', index: 2, direction: 1 }, { axis: 'y', index: 2, direction: 1 }],
+        'U': [{ axis: 'y', index: 2, direction: -1 }],
+        "U'": [{ axis: 'y', index: 2, direction: 1 }],
+        'U2': [{ axis: 'y', index: 2, direction: -1 }, { axis: 'y', index: 2, direction: -1 }],
 
-        'D': [{ axis: 'y', index: 0, direction: -1 }],
-        "D'": [{ axis: 'y', index: 0, direction: 1 }],
-        'D2': [{ axis: 'y', index: 0, direction: -1 }, { axis: 'y', index: 0, direction: -1 }],
+        'D': [{ axis: 'y', index: 0, direction: 1 }],
+        "D'": [{ axis: 'y', index: 0, direction: -1 }],
+        'D2': [{ axis: 'y', index: 0, direction: 1 }, { axis: 'y', index: 0, direction: 1 }],
 
-        'F': [{ axis: 'z', index: 2, direction: 1 }],
-        "F'": [{ axis: 'z', index: 2, direction: -1 }],
-        'F2': [{ axis: 'z', index: 2, direction: 1 }, { axis: 'z', index: 2, direction: 1 }],
+        'R': [{ axis: 'z', index: 2, direction: -1 }],
+        "R'": [{ axis: 'z', index: 2, direction: 1 }],
+        'R2': [{ axis: 'z', index: 2, direction: -1 }, { axis: 'z', index: 2, direction: -1 }],
 
-        'B': [{ axis: 'z', index: 0, direction: -1 }],
-        "B'": [{ axis: 'z', index: 0, direction: 1 }],
-        'B2': [{ axis: 'z', index: 0, direction: -1 }, { axis: 'z', index: 0, direction: -1 }]
+        'L': [{ axis: 'z', index: 0, direction: 1 }],
+        "L'": [{ axis: 'z', index: 0, direction: -1 }],
+        'L2': [{ axis: 'z', index: 0, direction: 1 }, { axis: 'z', index: 0, direction: 1 }]
     };
 
     const reverseMap: { [key: string]: string } = {};
@@ -105,6 +109,16 @@ function App() {
         }
     }
 
+    /*var selectedColorMap: number[] = whiteOnTop;
+    const setSelectedColorMap = (index: Number) => {
+        if (index == 1) {
+            selectedColorMap = whiteOnTop;
+        }
+        if (index == 2) {
+            selectedColorMap = whiteOnBottom;
+        }
+    }*/
+
     const moveToNotation = (moves: { axis: 'x' | 'y' | 'z'; index: number; direction: number }[]): string => {
         if (!moves) return '';
 
@@ -115,21 +129,32 @@ function App() {
         return reverseMap[key] ?? '';
     };
 
+    var tempCube: any = null;
+
     const solve = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
 
-        const cube = new Cube();
-        moveQueue.forEach(move => {
-            cube.move(moveToNotation([move]));
-        });
+        //const cube = new Cube();
+        /*moveQueue.forEach(move => {
+            const parsedMove = moveToNotation([move]);
+            console.log(parsedMove);
+            logicalCube.move(parsedMove);
+        });*/
+
+        tempCube = logicalCube;
+
+        console.log('logical cube', logicalCube.toString())
 
         Cube.initSolver();
 
-        const solvedMoves: string = cube.solve();
+        const solvedMoves: string = logicalCube.solve();
         console.log('solvedMoves', solvedMoves);
         moveQueue = [];
 
+        logicalCube.move(solvedMoves);
+
         solvedMoves.split(" ").forEach(move => {
+            console.log(move, moveMap[move]);
             moveQueue.push(...moveMap[move]);
         });
         console.log(moveQueue);
@@ -138,12 +163,16 @@ function App() {
         moveByQueue();
 
     }
+
     const solveByInverseMoves = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
         // Run the greedy solver
         console.log('Solving cube...');
         chainedMove = true;
         solv = true;
+
+        moveQueue.forEach(move => move.direction *= -1)
+
         moveByQueue();
     };
 
@@ -180,19 +209,23 @@ function App() {
             rand = false;
             return;
         }
+
+        const move = rand ? randomizeMoveQueue.pop()! : moveQueue.pop()!;
+
         if (rand) {
-            const move = randomizeMoveQueue.pop()!;
             moveQueue.push({ axis: move.axis, index: move.index, direction: move.direction });
-            performRotation(move.axis, move.index, move.direction);
-        } else {
-            const move = moveQueue.pop()!;
-            const moveDir = move.direction;
-            performRotation(move.axis, move.index, moveDir);
         }
+        performRotation(move.axis, move.index, move.direction);
     };
 
+    const isSolved = () => {
+        console.log(logicalCube.isSolved());
+        console.log(logicalCube.toJSON());
+    }
+
+
     const getClickedFace = (intersection: THREE.Intersection, clickedCube: THREE.Mesh) => {
-    
+
         const worldPoint = intersection.point.clone();
         const localPoint = group.worldToLocal(worldPoint.clone());
 
@@ -228,6 +261,27 @@ function App() {
             const hit = intersects[0];
             const clickedCube = hit.object as THREE.Mesh;
             dragRef.current.clickedCube = clickedCube;
+
+            /*const mesh = clickedCube;
+
+            if (Array.isArray(mesh.material)) {
+
+                const materials = selectedColorMap.map(color =>
+                    new THREE.MeshPhongMaterial({
+                        color: color,
+                        emissive: 0x111111,
+                        shininess: 200
+                    })
+                );
+
+                const faceIndex = hit.faceIndex!;
+                const matIndex = Math.floor(faceIndex / 2);
+                for (let i = 0; i < 6; i++) {
+                    // Clone so we don't share materials between cubes
+                    mesh.material[i].color.set(selectedColorMap[i])
+                }
+            }*/
+
             console.log(clickedCube.userData.gridPosition);
             dragRef.current.clickFace = getClickedFace(hit, clickedCube);
             dragRef.current.clickWorldPoint.copy(hit.point);
@@ -330,9 +384,18 @@ function App() {
             const maxAxis = principalComponent(localDrag);
             const rotateAxis = transitions[face][maxAxis];
             const clickedIndex = (dragRef.current.clickedCube!.userData.gridPosition as any)[rotateAxis];
+
+            console.log(face)
+            // invert the direction for x face since its odd
+            if (face === 'y') {
+                dir *= -1
+            }
+
             if (dist > 50) {
+                console.log(moveToNotation([{ axis: rotateAxis, index: clickedIndex, direction: dir }]))
                 performRotation(rotateAxis, clickedIndex, dir);
                 moveQueue.push({ axis: rotateAxis, index: clickedIndex, direction: dir });
+                logicalCube.move(moveToNotation([{ axis: rotateAxis, index: clickedIndex, direction: dir }]));
             }
             dragRef.current.clickedCube = null;
             dragRef.current.clickFace = null;
@@ -346,6 +409,7 @@ function App() {
         dragRef.current.isMoving = true;
 
         if (Math.abs(direction) === 2) {
+            console.log('singleDirection')
             const singleDirection = Math.sign(direction);
             performRotation(axis, clickedIndex, singleDirection);
             return;
@@ -421,6 +485,7 @@ function App() {
                 updateGridPositions();
                 active.forEach(c => mainGroup!.attach(c));
                 dragRef.current.isMoving = false;
+
                 console.log('Rotation complete');
                 if (chainedMove) {
                     moveByQueue();
@@ -450,7 +515,7 @@ function App() {
         sceneRef.current = scene;
 
         // Camera setup
-        const camera = new THREE.PerspectiveCamera(50, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(70, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
         camera.position.set(0, 0, 4);
         camera.lookAt(0, 0, 0);
         cameraRef.current = camera;
@@ -472,6 +537,14 @@ function App() {
         for (let x = 0; x < 3; x++) {
             for (let y = 0; y < 3; y++) {
                 for (let z = 0; z < 3; z++) {
+
+                    // We only give the center cubies color on init
+                    const colored = (x === 0 && y === 1 && z === 1)
+                        || (x === 1 && y === 1 && z === 2)
+                        || (x === 1 && y === 1 && z === 2)
+                        || (x === 2 && y === 1 && z === 1)
+                        || (x === 1 && y === 2 && z === 1)
+                        || (x === 1 && y === 0 && z === 1)
 
                     const materials = colors.map(color =>
                         new THREE.MeshPhongMaterial({
@@ -551,13 +624,38 @@ function App() {
     }, []);
 
     return (
-        <div>
-            <div ref={containerRef} className='app-container' />
-            <div style={{ position: 'absolute', width: '100%', bottom: 10, flex: 1, alignContent: 'center', textAlign: 'center', marginTop: '10px' }}>
-                <button style={{ margin: 10, backgroundColor: '#fff', color: 'black' }} onClick={solve}>Solve</button>
-                <button style={{ margin: 10, backgroundColor: '#fff', color: 'black' }} onClick={solveByInverseMoves}>Solve by inverse moves</button>
-                <button style={{ margin: 10, backgroundColor: '#fff', color: 'black' }} onClick={revert}>Revert latest move</button>
-                <button style={{ margin: 10, backgroundColor: '#fff', color: 'black' }} onClick={randomize}>Randomize</button>
+        <div className="app-root">
+            <div ref={containerRef} className="app-container" />
+
+            {/*<div className="color-selector">
+                <button
+                    className={selectedColorMap === whiteOnTop ? "selected" : ""}
+                    onClick={() => setSelectedColorMap(1)}
+                >
+                    White on top
+                </button>
+
+                <button
+                    className={selectedColorMap === 99 ? "selected" : ""}
+                    onClick={() => setSelectedColorMap(99)}
+                >
+                    White on left
+                </button>
+
+                <button
+                    className={selectedColorMap === whiteOnBottom ? "selected" : ""}
+                    onClick={() => setSelectedColorMap(2)}
+                >
+                    White on bottom
+                </button>
+            </div>*/}
+
+            <div className="bottom-bar">
+                <button onClick={isSolved}>is solved</button>
+                <button onClick={solve}>Solve</button>
+                <button onClick={solveByInverseMoves}>Solve by inverse moves</button>
+                <button onClick={revert}>Revert latest move</button>
+                <button onClick={randomize}>Randomize</button>
             </div>
         </div>
     )
