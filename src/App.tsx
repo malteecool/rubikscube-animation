@@ -100,6 +100,8 @@ function App() {
         'L2': [{ axis: 'z', index: 0, direction: 1 }, { axis: 'z', index: 0, direction: 1 }]
     };
 
+    
+
     const reverseMap: { [key: string]: string } = {};
 
     for (const [notation, moves] of Object.entries(moveMap)) {
@@ -129,8 +131,6 @@ function App() {
         return reverseMap[key] ?? '';
     };
 
-    var tempCube: any = null;
-
     const solve = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
 
@@ -141,21 +141,19 @@ function App() {
             logicalCube.move(parsedMove);
         });*/
 
-        tempCube = logicalCube;
-
-        console.log('logical cube', logicalCube.toString())
-
         Cube.initSolver();
 
         const solvedMoves: string = logicalCube.solve();
-        console.log('solvedMoves', solvedMoves);
         moveQueue = [];
 
         logicalCube.move(solvedMoves);
 
         solvedMoves.split(" ").forEach(move => {
-            console.log(move, moveMap[move]);
-            moveQueue.push(...moveMap[move]);
+            // Since the solve algorithm returns moves in order start to finish
+            // and the moveByQueue pops the last move added we need to unshift.
+            // or change how the movequeue extracts values.
+            // That involves changing the move/randomize/solve by inverse as well.
+            moveQueue.unshift(...moveMap[move]);
         });
         console.log(moveQueue);
         solv = true;
