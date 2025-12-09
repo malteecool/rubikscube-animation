@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 /**
 index 0 (Right/+X)
 index 1 (Left/-X)
@@ -7,7 +9,7 @@ index 4 (Front/+Z)
 index 5 (Back/-Z)
  */
 
-export const whiteOnTop = [
+export const whiteOnTop = [ // U
     0xff6b00, // orange - index 0 (Right/+X)
     0xff0000, // red    - index 1 (Left/-X)
     0xffffff, // white  - index 2 (Top/+Y)
@@ -16,7 +18,7 @@ export const whiteOnTop = [
     0x00ff00, // green  - index 5 (Back/-Z)
 ];
 
-export const whiteOnBottom = [
+export const whiteOnBottom = [ // D
     0xff0000, // red 
     0xff6b00, // orange 
     0xffff00, // yellow 
@@ -25,20 +27,20 @@ export const whiteOnBottom = [
     0x00ff00, // green  
 ];
 
-const whiteOnRight = [
+export const whiteOnRight = [ // F
     0xffffff, // white 
     0xffff00, // yellow
-    0xff6b00, // orange
     0xff0000, // red
+    0xff6b00, // orange
     0x0000ff, // blue  
     0x00ff00, // green 
 ];
 // TODO
-const whiteOnLeft = [
-    0xffffff, // white 
+export const whiteOnLeft = [ // B
     0xffff00, // yellow
-    0xff0000, // red  
+    0xffffff, // white 
     0xff6b00, // orange
+    0xff0000, // red  
     0x0000ff, // blue  
     0x00ff00, // green 
 ];
@@ -50,18 +52,16 @@ index 3 (Bottom/-Y)
 index 4 (Front/+Z)
 index 5 (Back/-Z)
  */
-const whiteOnFront = [
+export const whiteOnFront = [ // L
     0xff6b00, // orange
     0xff0000, // red   
     0x00ff00, // green 
     0x0000ff, // blue  
     0xffffff, // white 
     0xffff00, // yellow
-
-
 ];
 
-const whiteOnBack = [
+export const whiteOnBack = [ // R
     0xff6b00, // orange - index 0 (Right/+X)
     0xff0000, // red    - index 1 (Left/-X)
     0x0000ff, // blue   - index 4 (Front/+Z)
@@ -70,80 +70,94 @@ const whiteOnBack = [
     0xffffff, // white  - index 2 (Top/+Y)
 ];
 
-export enum Face {
-  R = "R", // +X
-  L = "L", // -X
-  U = "U", // +Y
-  D = "D", // -Y
-  F = "F", // +Z
-  B = "B"  // -Z
+export const colorPositions = [whiteOnTop, whiteOnBottom, whiteOnRight, whiteOnLeft, whiteOnFront, whiteOnBack]
+export const faceForInitialColor = ['U', 'D', 'F', 'B', 'L', 'R']
+
+export interface JsonCube {
+    center: number[],
+    co: number[],
+    cp: number[],
+    eo: number[],
+    ep: number[]
+};
+
+export const COLOR_TO_INDEX: Record<number, number> = {
+    0: 0xff6b00, // orange - index 0 (Right/+X)
+    1: 0xff0000, // red    - index 1 (Left/-X)
+    2: 0xffffff, // white  - index 2 (Top/+Y)
+    3: 0xffff00, // yellow - index 3 (Bottom/-Y)
+    4: 0x0000ff, // blue   - index 4 (Front/+Z)
+    5: 0x00ff00, // green  - index 5 (Back/-Z)
 }
 
-export const FACE_TO_INDEX: Record<Face, number> = {
-    [Face.R]: 0,
-    [Face.L]: 1,
-    [Face.U]: 2,
-    [Face.D]: 3,
-    [Face.F]: 4,
-    [Face.B]: 5,
+
+/**
+ * 
+ * export const FACE_NORMALS = {
+    U: new THREE.Vector3(0, 1, 0),
+    D: new THREE.Vector3(0, -1, 0),
+
+    R: new THREE.Vector3(1, 0, 0),
+    L: new THREE.Vector3(-1, 0, 0),
+
+    // FIX IS HERE ↓
+    F: new THREE.Vector3(0, 0, 1),   // front is +Z
+    B: new THREE.Vector3(0, 0, -1),   // back  is -Z
+};
+ */
+
+export const FACE_NORMALS = {
+    U: new THREE.Vector3(0, 1, 0),
+    D: new THREE.Vector3(0, -1, 0),
+
+    B: new THREE.Vector3(1, 0, 0),
+    F: new THREE.Vector3(-1, 0, 0),
+
+    // FIX IS HERE ↓
+    L: new THREE.Vector3(0, 0, 1),   // front is +Z
+    R: new THREE.Vector3(0, 0, -1),   // back  is -Z
 };
 
-export interface CubeColorConfig {
-    [Face.R]: number;
-    [Face.L]: number;
-    [Face.U]: number;
-    [Face.D]: number;
-    [Face.F]: number;
-    [Face.B]: number;
-}
-
-const defaultColors: CubeColorConfig = {
-    R: 0xff6b00, // orange
-    L: 0xff0000, // red
-    U: 0xffffff, // white
-    D: 0xffff00, // yellow
-    F: 0x0000ff, // blue
-    B: 0x00ff00, // green
+// Map actual THREE colors → cube notation letters
+export const COLOR_TO_LETTER: { [colorHex: string]: string } = {
+    "ffffff": "U",   // white
+    "ffff00": "D",   // yellow
+    "ff0000": "F",   // red
+    "ff6b00": "B",   // orange
+    "0000ff": "L",   // blue
+    "00ff00": "R",   // green
 };
 
-export const CORNER_FACE_SETS: Record<string, Face[]> = {
-    URF: [Face.U, Face.R, Face.F],
-    UFL: [Face.U, Face.F, Face.L],
-    ULB: [Face.U, Face.L, Face.B],
-    UBR: [Face.U, Face.B, Face.R],
+const MATERIAL_NORMALS = [
+    new THREE.Vector3(1, 0, 0),  // +X right  → material[0]
+    new THREE.Vector3(-1, 0, 0),  // -X left   → material[1]
+    new THREE.Vector3(0, 1, 0),  // +Y up     → material[2]
+    new THREE.Vector3(0, -1, 0),  // -Y down   → material[3]
+    new THREE.Vector3(0, 0, 1),  // +Z front  → material[4]
+    new THREE.Vector3(0, 0, -1),  // -Z back   → material[5]
+];
 
-    DFR: [Face.D, Face.F, Face.R],
-    DLF: [Face.D, Face.L, Face.F],
-    DBL: [Face.D, Face.B, Face.L],
-    DRB: [Face.D, Face.R, Face.B],
-};
+export const getStickerLetter = (cubie: THREE.Mesh, faceWorldNormal: THREE.Vector3): string => {
+    const worldMatrix = cubie.matrixWorld;
 
-export const EDGE_FACE_SETS: Record<string, Face[]> = {
-  UF: [Face.U, Face.F],
-  UR: [Face.U, Face.R],
-  UB: [Face.U, Face.B],
-  UL: [Face.U, Face.L],
+    let bestIndex = -1;
+    let bestDot = -Infinity;
 
-  DF: [Face.D, Face.F],
-  DR: [Face.D, Face.R],
-  DB: [Face.D, Face.B],
-  DL: [Face.D, Face.L],
+    for (let i = 0; i < 6; i++) {
+        const localNormal = MATERIAL_NORMALS[i].clone().applyMatrix4(worldMatrix).sub(cubie.getWorldPosition(new THREE.Vector3()));
+        localNormal.normalize();
 
-  FR: [Face.F, Face.R],
-  FL: [Face.F, Face.L],
-  BR: [Face.B, Face.R],
-  BL: [Face.B, Face.L],
-};
+        const dot = localNormal.dot(faceWorldNormal);
+        if (dot > bestDot) {
+            bestDot = dot;
+            bestIndex = i;
+        }
+    }
 
-export const CENTER_FACE_SETS: Record<string, Face[]> = {
-  U: [Face.U],
-  D: [Face.D],
-  F: [Face.F],
-  B: [Face.B],
-  R: [Face.R],
-  L: [Face.L],
-};
+    if (!Array.isArray(cubie.material)) {
+        return "?";
+    }
 
-export default function ColorMap() {
-
+    const hex = cubie.material[bestIndex].color.getHexString();
+    return COLOR_TO_LETTER[hex] ?? "?";
 }

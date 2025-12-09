@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import './App.css'
 import Cube from "cubejs";
+import * as ColorMapping from './colorMapping';
 
 function App() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +27,8 @@ function App() {
         clickDistance: 0,
         isMoving: false
     });
+
+    //const colorMap = [ColorMapping.whiteOnTop, ColorMapping.whiteOnBottom, ColorMapping.whiteOnLeft, ColorMapping.whiteOnRight, ColorMapping.whiteOnFront, ColorMapping.whiteOnBack]
 
     const cubeSize = 0.6;
     const spacing = 0.02;
@@ -100,8 +103,6 @@ function App() {
         'L2': [{ axis: 'z', index: 0, direction: 1 }, { axis: 'z', index: 0, direction: 1 }]
     };
 
-    
-
     const reverseMap: { [key: string]: string } = {};
 
     for (const [notation, moves] of Object.entries(moveMap)) {
@@ -111,15 +112,27 @@ function App() {
         }
     }
 
-    /*var selectedColorMap: number[] = whiteOnTop;
-    const setSelectedColorMap = (index: Number) => {
-        if (index == 1) {
-            selectedColorMap = whiteOnTop;
-        }
-        if (index == 2) {
-            selectedColorMap = whiteOnBottom;
-        }
-    }*/
+    const initialSelectedIndex = 0;
+    // Causes stale closure issue so we need to use the ref as well. This could be reworked.
+    const [selectedColorMap, setSelectedColorMap] = useState<number[]>(ColorMapping.colorPositions[initialSelectedIndex])
+    const [userSelectedColorIndex, setUserSelectedColorIndex] = useState<number>(initialSelectedIndex);
+    const selectedColorMapRef = useRef<number[]>(ColorMapping.colorPositions[initialSelectedIndex]);
+    const userSelectedColorIndexRef = useRef<number>(initialSelectedIndex);
+    const updateUserSelectedColorMap = (index: number) => {
+        const newMap = ColorMapping.colorPositions[index];
+
+        setSelectedColorMap(newMap);
+        setUserSelectedColorIndex(index);
+
+        selectedColorMapRef.current = newMap;
+        userSelectedColorIndexRef.current = index;
+
+        console.log('index:', index);
+    };
+
+    useEffect(() => {
+        selectedColorMapRef.current = selectedColorMap;
+    }, [selectedColorMap]);
 
     const moveToNotation = (moves: { axis: 'x' | 'y' | 'z'; index: number; direction: number }[]): string => {
         if (!moves) return '';
@@ -133,15 +146,12 @@ function App() {
 
     const solve = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
-
-        //const cube = new Cube();
-        /*moveQueue.forEach(move => {
-            const parsedMove = moveToNotation([move]);
-            console.log(parsedMove);
-            logicalCube.move(parsedMove);
-        });*/
-
         Cube.initSolver();
+
+        const newCube = Cube.fromString(toString());
+        console.log('cube0', logicalCube.asString())
+        console.log('cube1', newCube.asString())
+        console.log('cube2', toString())
 
         const solvedMoves: string = logicalCube.solve();
         moveQueue = [];
@@ -219,8 +229,89 @@ function App() {
     const isSolved = () => {
         console.log(logicalCube.isSolved());
         console.log(logicalCube.toJSON());
+        console.log('cube', logicalCube.asString())
+        console.log(toString())
     }
 
+    const toString = () => {
+        return (
+            faceString("U") +
+            faceString("R") +
+            faceString("F") +
+            faceString("D") +
+            faceString("L") +
+            faceString("B")
+        );
+    };
+
+    function faceString(face: "U" | "D" | "L" | "R" | "F" | "B"): string {
+        const result: string[] = [];
+
+        // Which grid coordinate selects this face?
+        const selector = {
+            U: (p: any) => p.y === 2,
+            D: (p: any) => p.y === 0,
+            L: (p: any) => p.x === 0,
+            R: (p: any) => p.x === 2,
+            F: (p: any) => p.z === 2,
+            B: (p: any) => p.z === 0,
+        }[face];
+
+        // Sorting order: row-major for each face
+        const order = {
+            U: (a: any, b: any) => b.userData.gridPosition.z - a.userData.gridPosition.z || a.userData.gridPosition.x - b.userData.gridPosition.x,
+            D: (a: any, b: any) => a.userData.gridPosition.z - b.userData.gridPosition.z || a.userData.gridPosition.x - b.userData.gridPosition.x,
+            F: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.x - b.userData.gridPosition.x,
+            B: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.x - a.userData.gridPosition.x,
+            R: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.z - a.userData.gridPosition.z,
+            L: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.z - b.userData.gridPosition.z,
+        }[face];
+
+        const list = allCubesRef.current.filter(c => selector(c.userData.gridPosition));
+        list.sort(order);
+
+        const normal = ColorMapping.FACE_NORMALS[face];
+
+        list.forEach(cubie => {
+            result.push(ColorMapping.getStickerLetter(cubie, normal.clone()));
+        });
+
+        return result.join("");
+    }
+
+    const updateCubeColor = (mesh: THREE.Mesh, color?: number) => {
+        console.log('update cube color');
+        if (Array.isArray(mesh.material)) {
+            const currentMap = selectedColorMapRef.current;
+            for (let i = 0; i < 6; i++) {
+                mesh.material[i].color.set(color ? color : currentMap[i])
+            }
+        }
+    }
+
+    const clearCubeColor = () => {
+
+        allCubesRef.current.forEach(cubie => {
+
+            const x = cubie.userData.gridPosition.x;
+            const y = cubie.userData.gridPosition.y;
+            const z = cubie.userData.gridPosition.z;
+
+            // We only give the center cubies color on init
+            const colored = (x === 0 && y === 1 && z === 1)
+                || (x === 1 && y === 1 && z === 2)
+                || (x === 1 && y === 1 && z === 0)
+                || (x === 2 && y === 1 && z === 1)
+                || (x === 1 && y === 2 && z === 1)
+                || (x === 1 && y === 0 && z === 1)
+
+            if (!colored) {
+                updateCubeColor(cubie, gray)
+            }
+        })
+
+
+    }
 
     const getClickedFace = (intersection: THREE.Intersection, clickedCube: THREE.Mesh) => {
 
@@ -260,25 +351,7 @@ function App() {
             const clickedCube = hit.object as THREE.Mesh;
             dragRef.current.clickedCube = clickedCube;
 
-            /*const mesh = clickedCube;
-
-            if (Array.isArray(mesh.material)) {
-
-                const materials = selectedColorMap.map(color =>
-                    new THREE.MeshPhongMaterial({
-                        color: color,
-                        emissive: 0x111111,
-                        shininess: 200
-                    })
-                );
-
-                const faceIndex = hit.faceIndex!;
-                const matIndex = Math.floor(faceIndex / 2);
-                for (let i = 0; i < 6; i++) {
-                    // Clone so we don't share materials between cubes
-                    mesh.material[i].color.set(selectedColorMap[i])
-                }
-            }*/
+            updateCubeColor(clickedCube)
 
             console.log(clickedCube.userData.gridPosition);
             dragRef.current.clickFace = getClickedFace(hit, clickedCube);
@@ -383,7 +456,6 @@ function App() {
             const rotateAxis = transitions[face][maxAxis];
             const clickedIndex = (dragRef.current.clickedCube!.userData.gridPosition as any)[rotateAxis];
 
-            console.log(face)
             // invert the direction for x face since its odd
             if (face === 'y') {
                 dir *= -1
@@ -536,13 +608,6 @@ function App() {
             for (let y = 0; y < 3; y++) {
                 for (let z = 0; z < 3; z++) {
 
-                    // We only give the center cubies color on init
-                    const colored = (x === 0 && y === 1 && z === 1)
-                        || (x === 1 && y === 1 && z === 2)
-                        || (x === 1 && y === 1 && z === 2)
-                        || (x === 2 && y === 1 && z === 1)
-                        || (x === 1 && y === 2 && z === 1)
-                        || (x === 1 && y === 0 && z === 1)
 
                     const materials = colors.map(color =>
                         new THREE.MeshPhongMaterial({
@@ -625,28 +690,51 @@ function App() {
         <div className="app-root">
             <div ref={containerRef} className="app-container" />
 
-            {/*<div className="color-selector">
+            <div className="color-selector">
+                <span style={{ textAlign: 'center', fontWeight: 600 }}>Place white on</span>
                 <button
-                    className={selectedColorMap === whiteOnTop ? "selected" : ""}
-                    onClick={() => setSelectedColorMap(1)}
+                    className={userSelectedColorIndex === 0 ? "selected" : ""}
+                    onClick={() => updateUserSelectedColorMap(0)}
                 >
-                    White on top
+                    Top
                 </button>
-
                 <button
-                    className={selectedColorMap === 99 ? "selected" : ""}
-                    onClick={() => setSelectedColorMap(99)}
+                    className={userSelectedColorIndex === 1 ? "selected" : ""}
+                    onClick={() => updateUserSelectedColorMap(1)}
                 >
-                    White on left
+                    Bottom
                 </button>
-
                 <button
-                    className={selectedColorMap === whiteOnBottom ? "selected" : ""}
-                    onClick={() => setSelectedColorMap(2)}
+                    className={userSelectedColorIndex === 2 ? "selected" : ""}
+                    onClick={() => updateUserSelectedColorMap(2)}
                 >
-                    White on bottom
+                    Left
                 </button>
-            </div>*/}
+                <button
+                    className={userSelectedColorIndex === 3 ? "selected" : ""}
+                    onClick={() => updateUserSelectedColorMap(3)}
+                >
+                    Right
+                </button>
+                <button
+                    className={userSelectedColorIndex === 4 ? "selected" : ""}
+                    onClick={() => updateUserSelectedColorMap(4)}
+                >
+                    Front
+                </button>
+                <button
+                    className={userSelectedColorIndex === 5 ? "selected" : ""}
+                    onClick={() => updateUserSelectedColorMap(5)}
+                >
+                    Back
+                </button>
+                <button
+                    className={""}
+                    onClick={() => clearCubeColor()}
+                >
+                    Clear colors
+                </button>
+            </div>
 
             <div className="bottom-bar">
                 <button onClick={isSolved}>is solved</button>

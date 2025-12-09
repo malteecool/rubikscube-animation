@@ -111,9 +111,8 @@
 .color-selector button.selected {
     background: #5aa1ff;          /* Highlight color */
     color: black;
-    font-weight: 700;
 
-    border: 2px solid #9cf;       /* Glow border */
+           /* Glow border */
     transform: scale(1.05);       /* Slight pop */
-    box-shadow: 0 0 10px #5aa1ff; /* Soft glow */
+    box-shadow: 0 0 5px #5aa1ff; /* Soft glow */
 }
