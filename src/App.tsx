@@ -147,13 +147,16 @@ function App() {
     const solve = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
         Cube.initSolver();
+        //UUUUUUFFFRRRRRRRRRFFFFFFFFFBBBDDDDDDLLLLLLLLLUUUUBUUUU
+
+        // If the toString works we can remove the logical cube an only base it of the physical one.
 
         const newCube = Cube.fromString(toString());
         console.log('cube0', logicalCube.asString())
         console.log('cube1', newCube.asString())
         console.log('cube2', toString())
 
-        const solvedMoves: string = logicalCube.solve();
+        const solvedMoves: string = newCube.solve();
         moveQueue = [];
 
         logicalCube.move(solvedMoves);
@@ -247,29 +250,29 @@ function App() {
     function faceString(face: "U" | "D" | "L" | "R" | "F" | "B"): string {
         const result: string[] = [];
 
-        // Which grid coordinate selects this face?
         const selector = {
             U: (p: any) => p.y === 2,
             D: (p: any) => p.y === 0,
-            L: (p: any) => p.x === 0,
-            R: (p: any) => p.x === 2,
-            F: (p: any) => p.z === 2,
-            B: (p: any) => p.z === 0,
+            L: (p: any) => p.z === 0,
+            R: (p: any) => p.z === 2,
+            F: (p: any) => p.x === 0,
+            B: (p: any) => p.x === 2,
         }[face];
 
         // Sorting order: row-major for each face
         const order = {
-            U: (a: any, b: any) => b.userData.gridPosition.z - a.userData.gridPosition.z || a.userData.gridPosition.x - b.userData.gridPosition.x,
-            D: (a: any, b: any) => a.userData.gridPosition.z - b.userData.gridPosition.z || a.userData.gridPosition.x - b.userData.gridPosition.x,
-            F: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.x - b.userData.gridPosition.x,
-            B: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.x - a.userData.gridPosition.x,
+            U: (a: any, b: any) => b.userData.gridPosition.x - a.userData.gridPosition.x || a.userData.gridPosition.z - b.userData.gridPosition.z,
+            D: (a: any, b: any) => b.userData.gridPosition.x - a.userData.gridPosition.x || a.userData.gridPosition.z - b.userData.gridPosition.z,
+            F: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||
+                a.userData.gridPosition.z - b.userData.gridPosition.z,
+            B: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||   
+                b.userData.gridPosition.z - a.userData.gridPosition.z,
             R: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.z - a.userData.gridPosition.z,
             L: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.z - b.userData.gridPosition.z,
         }[face];
 
         const list = allCubesRef.current.filter(c => selector(c.userData.gridPosition));
         list.sort(order);
-
         const normal = ColorMapping.FACE_NORMALS[face];
 
         list.forEach(cubie => {
