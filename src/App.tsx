@@ -150,7 +150,7 @@ function App() {
         console.log('cube1', newCube.asString())
         console.log('cube2', toString())
 
-        /*const solvedMoves: string = newCube.solve();
+        const solvedMoves: string = newCube.solve();
         moveQueue = [];
 
         logicalCube.move(solvedMoves);
@@ -165,7 +165,7 @@ function App() {
         console.log(moveQueue);
         solv = true;
         chainedMove = true;
-        moveByQueue();*/
+        moveByQueue();
 
     }
 
@@ -260,7 +260,7 @@ function App() {
             F: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||
                 b.userData.gridPosition.z - a.userData.gridPosition.z,
             B: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||
-                b.userData.gridPosition.z - a.userData.gridPosition.z,
+                a.userData.gridPosition.z - b.userData.gridPosition.z,
             R: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.x - b.userData.gridPosition.x,
             L: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.x - a.userData.gridPosition.x,
         }[face];
