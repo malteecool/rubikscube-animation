@@ -142,7 +142,7 @@ function App() {
     // UUUUUUUUURRRDRRDLBFFFDFFDRRRFFRDBLDDLLLLLLDDBBBBFBBFBL
     const solve = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
-        //Cube.initSolver();
+        Cube.initSolver();
         console.log('solver initialized');
         const newCube = Cube.fromString(toString());
 
