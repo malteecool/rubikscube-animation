@@ -28,18 +28,8 @@ function App() {
         isMoving: false
     });
 
-    //const colorMap = [ColorMapping.whiteOnTop, ColorMapping.whiteOnBottom, ColorMapping.whiteOnLeft, ColorMapping.whiteOnRight, ColorMapping.whiteOnFront, ColorMapping.whiteOnBack]
-
     const cubeSize = 0.6;
     const spacing = 0.02;
-    const colors = [
-        0xff6b00, // orange - index 0 (Right/+X)
-        0xff0000, // red    - index 1 (Left/-X)
-        0xffffff, // white  - index 2 (Top/+Y)
-        0xffff00, // yellow - index 3 (Bottom/-Y)
-        0x0000ff, // blue   - index 4 (Front/+Z)
-        0x00ff00, // green  - index 5 (Back/-Z)
-    ];
 
     const logicalCube = new Cube();
 
@@ -112,28 +102,6 @@ function App() {
         }
     }
 
-    const initialSelectedIndex = 0;
-    // Causes stale closure issue so we need to use the ref as well. This could be reworked.
-    const [selectedColorMap, setSelectedColorMap] = useState<number[]>(ColorMapping.colorPositions[initialSelectedIndex])
-    const [userSelectedColorIndex, setUserSelectedColorIndex] = useState<number>(initialSelectedIndex);
-    const selectedColorMapRef = useRef<number[]>(ColorMapping.colorPositions[initialSelectedIndex]);
-    const userSelectedColorIndexRef = useRef<number>(initialSelectedIndex);
-    const updateUserSelectedColorMap = (index: number) => {
-        const newMap = ColorMapping.colorPositions[index];
-
-        setSelectedColorMap(newMap);
-        setUserSelectedColorIndex(index);
-
-        selectedColorMapRef.current = newMap;
-        userSelectedColorIndexRef.current = index;
-
-        console.log('index:', index);
-    };
-
-    useEffect(() => {
-        selectedColorMapRef.current = selectedColorMap;
-    }, [selectedColorMap]);
-
     const moveToNotation = (moves: { axis: 'x' | 'y' | 'z'; index: number; direction: number }[]): string => {
         if (!moves) return '';
 
@@ -144,19 +112,45 @@ function App() {
         return reverseMap[key] ?? '';
     };
 
+    // Causes stale closure issue so we need to use the ref as well. This could be reworked.
+    const [userSelectedColorIndex, setUserSelectedColorIndex] = useState<number | null>(null);
+    const [userSelectedColor, setUserSelectedColor] = useState<number | null>(null);
+    const userSelectedColorRef = useRef<number | null>(null);
+    const userSelectedColorIndexRef = useRef<number | null>(null);
+
+    const updateUserSelectedColorMap = (index: number) => {
+
+        if (index === userSelectedColorIndex) {
+            setUserSelectedColorIndex(null);
+            setUserSelectedColor(null);
+            userSelectedColorIndexRef.current = null;
+            userSelectedColorRef.current = null;
+            return;
+        }
+
+        setUserSelectedColorIndex(index);
+        setUserSelectedColor(ColorMapping.colors[index]);
+
+        userSelectedColorIndexRef.current = index;
+        userSelectedColorRef.current = ColorMapping.colors[index];
+    };
+
+    useEffect(() => {
+        userSelectedColorRef.current = userSelectedColor;
+    }, [userSelectedColor]);
+
+    // UUUUUUUUURRRDRRDLBFFFDFFDRRRFFRDBLDDLLLLLLDDBBBBFBBFBL
     const solve = () => {
         if (!cubeRef.current || dragRef.current.isMoving) return;
-        Cube.initSolver();
-        //UUUUUUFFFRRRRRRRRRFFFFFFFFFBBBDDDDDDLLLLLLLLLUUUUBUUUU
-
-        // If the toString works we can remove the logical cube an only base it of the physical one.
-
+        //Cube.initSolver();
+        console.log('solver initialized');
         const newCube = Cube.fromString(toString());
+
         console.log('cube0', logicalCube.asString())
         console.log('cube1', newCube.asString())
         console.log('cube2', toString())
 
-        const solvedMoves: string = newCube.solve();
+        /*const solvedMoves: string = newCube.solve();
         moveQueue = [];
 
         logicalCube.move(solvedMoves);
@@ -171,7 +165,7 @@ function App() {
         console.log(moveQueue);
         solv = true;
         chainedMove = true;
-        moveByQueue();
+        moveByQueue();*/
 
     }
 
@@ -253,22 +247,22 @@ function App() {
         const selector = {
             U: (p: any) => p.y === 2,
             D: (p: any) => p.y === 0,
-            L: (p: any) => p.z === 0,
-            R: (p: any) => p.z === 2,
+            L: (p: any) => p.z === 2,
+            R: (p: any) => p.z === 0,
             F: (p: any) => p.x === 0,
             B: (p: any) => p.x === 2,
         }[face];
 
         // Sorting order: row-major for each face
         const order = {
-            U: (a: any, b: any) => b.userData.gridPosition.x - a.userData.gridPosition.x || a.userData.gridPosition.z - b.userData.gridPosition.z,
-            D: (a: any, b: any) => b.userData.gridPosition.x - a.userData.gridPosition.x || a.userData.gridPosition.z - b.userData.gridPosition.z,
+            U: (a: any, b: any) => b.userData.gridPosition.x - a.userData.gridPosition.x || b.userData.gridPosition.z - a.userData.gridPosition.z,
+            D: (a: any, b: any) => a.userData.gridPosition.x - b.userData.gridPosition.x || b.userData.gridPosition.z - a.userData.gridPosition.z,
             F: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||
-                a.userData.gridPosition.z - b.userData.gridPosition.z,
-            B: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||   
                 b.userData.gridPosition.z - a.userData.gridPosition.z,
-            R: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.z - a.userData.gridPosition.z,
-            L: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.z - b.userData.gridPosition.z,
+            B: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y ||
+                b.userData.gridPosition.z - a.userData.gridPosition.z,
+            R: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || a.userData.gridPosition.x - b.userData.gridPosition.x,
+            L: (a: any, b: any) => b.userData.gridPosition.y - a.userData.gridPosition.y || b.userData.gridPosition.x - a.userData.gridPosition.x,
         }[face];
 
         const list = allCubesRef.current.filter(c => selector(c.userData.gridPosition));
@@ -276,19 +270,26 @@ function App() {
         const normal = ColorMapping.FACE_NORMALS[face];
 
         list.forEach(cubie => {
-            result.push(ColorMapping.getStickerLetter(cubie, normal.clone()));
+            result.push(ColorMapping.getStickerLetter(cubie, normal.clone(), face));
         });
 
         return result.join("");
     }
 
-    const updateCubeColor = (mesh: THREE.Mesh, color?: number) => {
-        console.log('update cube color');
-        if (Array.isArray(mesh.material)) {
-            const currentMap = selectedColorMapRef.current;
-            for (let i = 0; i < 6; i++) {
-                mesh.material[i].color.set(color ? color : currentMap[i])
+    const updateCubeColor = (clickedCube: THREE.Mesh, faceIndex: number, color?: number) => {
+        //console.log('update cube color', faceIndex, color)
+        if (Array.isArray(clickedCube.material)) {
+
+            if (faceIndex < 0) {
+                for (let i = 0; i < 6; i++) {
+                    clickedCube.material[i].color.set(color)
+                }
+                return;
             }
+            const materialIndex = Math.floor(faceIndex / 2);
+            console.log('update cube color', materialIndex, color)
+            clickedCube.material[materialIndex].color.set(color)
+
         }
     }
 
@@ -309,7 +310,7 @@ function App() {
                 || (x === 1 && y === 0 && z === 1)
 
             if (!colored) {
-                updateCubeColor(cubie, gray)
+                updateCubeColor(cubie, -1, gray)
             }
         })
 
@@ -354,8 +355,11 @@ function App() {
             const clickedCube = hit.object as THREE.Mesh;
             dragRef.current.clickedCube = clickedCube;
 
-            updateCubeColor(clickedCube)
+            if (userSelectedColorRef.current) {
+                updateCubeColor(clickedCube, hit.faceIndex!, userSelectedColorRef.current!);
+            }
 
+            console.log('faceindex: ', hit.faceIndex!)
             console.log(clickedCube.userData.gridPosition);
             dragRef.current.clickFace = getClickedFace(hit, clickedCube);
             dragRef.current.clickWorldPoint.copy(hit.point);
@@ -460,14 +464,18 @@ function App() {
             const clickedIndex = (dragRef.current.clickedCube!.userData.gridPosition as any)[rotateAxis];
 
             // invert the direction for x face since its odd
-            if (face === 'y') {
+            /*if (face === 'y') {
                 dir *= -1
-            }
+            }*/
 
             if (dist > 50) {
                 console.log(moveToNotation([{ axis: rotateAxis, index: clickedIndex, direction: dir }]))
                 performRotation(rotateAxis, clickedIndex, dir);
                 moveQueue.push({ axis: rotateAxis, index: clickedIndex, direction: dir });
+                if (rotateAxis === 'y' || rotateAxis === 'x') {
+                    dir *= -1;
+                    console.log('dir', dir)
+                }
                 logicalCube.move(moveToNotation([{ axis: rotateAxis, index: clickedIndex, direction: dir }]));
             }
             dragRef.current.clickedCube = null;
@@ -588,7 +596,7 @@ function App() {
         sceneRef.current = scene;
 
         // Camera setup
-        const camera = new THREE.PerspectiveCamera(70, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(80, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
         camera.position.set(0, 0, 4);
         camera.lookAt(0, 0, 0);
         cameraRef.current = camera;
@@ -612,7 +620,7 @@ function App() {
                 for (let z = 0; z < 3; z++) {
 
 
-                    const materials = colors.map(color =>
+                    const materials = ColorMapping.colors.map(color =>
                         new THREE.MeshPhongMaterial({
                             color: color,
                             emissive: 0x111111,
@@ -694,43 +702,18 @@ function App() {
             <div ref={containerRef} className="app-container" />
 
             <div className="color-selector">
-                <span style={{ textAlign: 'center', fontWeight: 600 }}>Place white on</span>
-                <button
-                    className={userSelectedColorIndex === 0 ? "selected" : ""}
-                    onClick={() => updateUserSelectedColorMap(0)}
-                >
-                    Top
-                </button>
-                <button
-                    className={userSelectedColorIndex === 1 ? "selected" : ""}
-                    onClick={() => updateUserSelectedColorMap(1)}
-                >
-                    Bottom
-                </button>
-                <button
-                    className={userSelectedColorIndex === 2 ? "selected" : ""}
-                    onClick={() => updateUserSelectedColorMap(2)}
-                >
-                    Left
-                </button>
-                <button
-                    className={userSelectedColorIndex === 3 ? "selected" : ""}
-                    onClick={() => updateUserSelectedColorMap(3)}
-                >
-                    Right
-                </button>
-                <button
-                    className={userSelectedColorIndex === 4 ? "selected" : ""}
-                    onClick={() => updateUserSelectedColorMap(4)}
-                >
-                    Front
-                </button>
-                <button
-                    className={userSelectedColorIndex === 5 ? "selected" : ""}
-                    onClick={() => updateUserSelectedColorMap(5)}
-                >
-                    Back
-                </button>
+                {
+                    ColorMapping.nameColorMap.map((color, index) => {
+                        return (
+                            <button
+                                className={userSelectedColorIndex === index ? "selected" : ""}
+                                onClick={() => updateUserSelectedColorMap(index)}
+                            >
+                                {color.name}
+                            </button>
+                        )
+                    })
+                }
                 <button
                     className={""}
                     onClick={() => clearCubeColor()}
